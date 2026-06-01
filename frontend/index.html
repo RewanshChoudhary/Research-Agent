@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ResearchBuddy</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="workspace">
+        <form id="research-form" class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">ResearchBuddy</p>
+              <h1>Submit research</h1>
+            </div>
+            <button id="submit-button" type="submit">Run</button>
+          </div>
+
+          <label>
+            Query
+            <textarea id="query" name="query" rows="7" required maxlength="500">Compare the current state of AI-assisted software engineering tools, focusing on autonomous coding agents, code review automation, test generation, security vulnerability detection, developer productivity impact, hallucinated code, license contamination, and over-reliance by junior engineers.</textarea>
+          </label>
+
+          <div class="grid">
+            <label>
+              Domain
+              <select id="domain" name="domain">
+                <option value="TECHNICAL" selected>Technical</option>
+                <option value="GENERAL">General</option>
+                <option value="MEDICAL">Medical</option>
+                <option value="LEGAL">Legal</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </label>
+
+            <label>
+              Depth
+              <select id="depth" name="depth">
+                <option value="QUICK">Quick</option>
+                <option value="STANDARD">Standard</option>
+                <option value="DEEP" selected>Deep</option>
+              </select>
+            </label>
+
+            <label>
+              Max sources
+              <input id="maxSources" name="maxSources" type="number" min="1" max="20" value="8">
+            </label>
+
+            <label>
+              Output
+              <select id="outputFormat" name="outputFormat">
+                <option value="JSON" selected>JSON</option>
+                <option value="MARKDOWN">Markdown</option>
+                <option value="PLAIN">Plain</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="check">
+            <input id="factCheck" name="factCheck" type="checkbox" checked>
+            Fact check
+          </label>
+
+          <div class="grid">
+            <label>
+              Prefer domains
+              <input id="trustedDomains" name="trustedDomains" value="github.blog, microsoft.com, research.google, stackoverflow.blog">
+            </label>
+
+            <label>
+              Exclude domains
+              <input id="excludeDomains" name="excludeDomains" value="reddit.com, quora.com, medium.com, dev.to">
+            </label>
+          </div>
+        </form>
+
+        <section class="panel output-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Status</p>
+              <h2 id="status-title">No job yet</h2>
+            </div>
+            <button id="poll-button" type="button" disabled>Poll</button>
+          </div>
+
+          <div id="job-meta" class="meta"></div>
+          <div id="progress" class="progress" hidden>
+            <span id="progress-bar"></span>
+          </div>
+          <pre id="result" class="result">Submit a request to start a research job.</pre>
+        </section>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
