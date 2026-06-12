@@ -7,17 +7,20 @@ from bs4 import BeautifulSoup
 from worker.agent_output import ResearchContext
 from worker.enums import SourceStatus
 
-
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/125.0 Safari/537.36"
 )
 
 
-async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:
+async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:  # pyright: ignore[reportGeneralTypeIssues]
     del config, llm
-    async with httpx.AsyncClient(timeout=8.0, follow_redirects=True, headers={"User-Agent": USER_AGENT}) as client:
-        results = await asyncio.gather(*[_scrape_url(client, url) for url in ctx.urls], return_exceptions=True)
+    async with httpx.AsyncClient(
+        timeout=8.0, follow_redirects=True, headers={"User-Agent": USER_AGENT}
+    ) as client:
+        results = await asyncio.gather(
+            *[_scrape_url(client, url) for url in ctx.urls], return_exceptions=True
+        )
 
     for url, result in zip(ctx.urls, results, strict=False):
         if isinstance(result, Exception):
@@ -48,7 +51,9 @@ async def _scrape_url(client: httpx.AsyncClient, url: str) -> tuple[str, str | N
 
 
 def extract_main_text(soup: BeautifulSoup) -> str:
-    for tag in soup(["script", "style", "nav", "header", "footer", "aside", "noscript"]):
+    for tag in soup(
+        ["script", "style", "nav", "header", "footer", "aside", "noscript"]
+    ):
         tag.decompose()
 
     main = soup.find("article") or soup.find("main") or _largest_text_div(soup)

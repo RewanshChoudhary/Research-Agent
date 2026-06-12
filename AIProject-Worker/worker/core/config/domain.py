@@ -43,3 +43,4 @@ DOMAIN_CONFIGS = {
 }
 def resolve_config(domain: Domain) -> dict:
     return DOMAIN_CONFIGS.get(domain, DOMAIN_CONFIGS[Domain.GENERAL])
+

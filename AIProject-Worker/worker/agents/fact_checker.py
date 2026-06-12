@@ -1,8 +1,7 @@
 import json
 import re
 
-from worker.agent_output import ConflictingClaim, FactCheckResult, ResearchContext
-
+from worker.agent_output import FactCheckResult, ResearchContext
 
 STOP_WORDS = {
     "about", "after", "again", "also", "because", "before", "being", "between", "could",

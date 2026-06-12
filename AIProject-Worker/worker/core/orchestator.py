@@ -10,8 +10,7 @@ from worker.core.config.domain import resolve_config
 from worker.core.java_api import get_job_details, patch_job_progress, post_job_failure, post_report
 from worker.core.llm import llm_complete
 from worker.enums import Depth, JobStatus, PipelineStage
-from worker.schemas import WorkerFailRequest, WorkerStatusUpdateRequest
-
+from worker.schemas import WorkerFailRequest, WorkerStatusUpdateRequest, WorkerJobDetailsResponse
 
 log = structlog.get_logger()
 Agent = Callable[[ResearchContext, dict, callable], Awaitable[None]]
@@ -35,7 +34,7 @@ async def run_job(job_id: str) -> None:
     start = time.monotonic()
     log.info("orchestrator_started", job_id=job_id)
 
-    request = await get_job_details(job_id)
+    request: WorkerJobDetailsResponse = await get_job_details(job_id)
     config = resolve_config(request.domain)
     pipeline = build_pipeline(request.depth, request.factCheckEnabled)
     ctx = ResearchContext(request=request)

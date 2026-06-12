@@ -101,7 +101,8 @@ async def _query_phrases(query: str, config: dict, llm: callable) -> list[str]:
         phrases = json.loads(result.content)
         if isinstance(phrases, list):
             clean = [str(item).strip() for item in phrases if str(item).strip()]
-            return clean[:3] or [query]
+            return clean[:5] or [query]
+# Only in case of exception (Just to hint that exception is possible)
     except Exception:
         return [query]
     return [query]

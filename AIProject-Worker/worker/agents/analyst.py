@@ -9,7 +9,7 @@ async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:
     source_block = "\n\n".join(
         f"{url}\n{summary}" for url, summary in ctx.source_summaries.items()
     )
-    result = await llm(
+    result: str = await llm(
         prompt=(
             "Analyze this research material. Return only JSON with keys: "
             "patterns (array of strings), perspectives (array of objects with viewpoint, description, "
@@ -37,15 +37,23 @@ def _parse_insights(content: str) -> AnalystInsights:
             Perspective(
                 viewpoint=str(item.get("viewpoint", "")),
                 description=str(item.get("description", "")),
-                supporting_source_urls=[str(url) for url in item.get("supporting_source_urls", [])],
+                supporting_source_urls=[
+                    str(url) for url in item.get("supporting_source_urls", [])
+                ],
             )
         )
 
     return AnalystInsights(
-        patterns=_string_list(data.get("patterns", [])) if isinstance(data, dict) else [],
+        patterns=_string_list(data.get("patterns", []))
+        if isinstance(data, dict)
+        else [],
         perspectives=perspectives,
-        knowledge_gaps=_string_list(data.get("knowledge_gaps", [])) if isinstance(data, dict) else [],
-        further_reading=_string_list(data.get("further_reading", [])) if isinstance(data, dict) else [],
+        knowledge_gaps=_string_list(data.get("knowledge_gaps", []))
+        if isinstance(data, dict)
+        else [],
+        further_reading=_string_list(data.get("further_reading", []))
+        if isinstance(data, dict)
+        else [],
     )
 
 

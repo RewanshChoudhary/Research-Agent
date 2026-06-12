@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 
 from worker.core.orchestator import run
 
-
 load_dotenv()
 log = structlog.get_logger()
 
@@ -21,8 +20,16 @@ def require_env(name: str) -> str:
 
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-REDIS_CONSUMER_GROUP = os.getenv("REDIS_JOB_GROUP") or os.getenv("REDIS_CONSUMER_GROUP") or "research:workers"
-REDIS_STREAM = os.getenv("REDIS_JOB_STREAM") or os.getenv("REDIS_STREAM_NAME") or "research:jobs:stream"
+REDIS_CONSUMER_GROUP = (
+    os.getenv("REDIS_JOB_GROUP")
+    or os.getenv("REDIS_CONSUMER_GROUP")
+    or "research:workers"
+)
+REDIS_STREAM = (
+    os.getenv("REDIS_JOB_STREAM")
+    or os.getenv("REDIS_STREAM_NAME")
+    or "research:jobs:stream"
+)
 
 
 def extract_job_id(job_data: dict) -> str | None:
@@ -42,7 +49,6 @@ def extract_job_id(job_data: dict) -> str | None:
 
 async def process_job(job_id: str) -> None:
     await run(job_id)
-    
 
 
 async def consume(consumer_name: str) -> None:
