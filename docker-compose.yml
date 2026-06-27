@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16
-    container_name: researchbuddy-postgres
+    container_name: research-buddy-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_NAME:-researchbuddy}
@@ -19,7 +19,7 @@ services:
 
   redis:
     image: redis:7
-    container_name: researchbuddy-redis
+    container_name: research-buddy-redis
     restart: unless-stopped
     ports:
       - "${REDIS_PORT:-6379}:6379"
@@ -34,7 +34,7 @@ services:
   api:
     build:
       context: ./AIproject
-    container_name: researchbuddy-api
+    container_name: research-buddy-api
     restart: unless-stopped
     environment:
       DB_HOST: postgres
@@ -59,7 +59,7 @@ services:
   worker:
     build:
       context: ./AIProject-Worker
-    container_name: researchbuddy-worker
+    container_name: research-buddy-worker
     restart: unless-stopped
     environment:
       JAVA_SERVER_URL: http://api:8080
@@ -81,7 +81,7 @@ services:
   frontend:
     build:
       context: ./frontend
-    container_name: researchbuddy-frontend
+    container_name: research-buddy-frontend
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:80"

@@ -1,0 +1,10 @@
+pydantic
+structlog
+httpx
+openai
+tenacity
+python-dotenv
+redis
+beautifulsoup4
+duckduckgo_search
+openai
