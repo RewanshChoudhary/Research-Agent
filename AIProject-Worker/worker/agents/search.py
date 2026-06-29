@@ -4,7 +4,32 @@ from urllib.parse import urlparse
 
 from worker.agent_output import ResearchContext
 
+template="""You are a query decomposition model.
 
+Given a user's question:
+question= {query}
+1. Identify the final objective.
+2. Determine which information must be retrieved.
+3. Split retrieval into independent search queries.
+4. Split reasoning into separate tasks.
+5. Keep retrieval and reasoning separate.
+6. Do not answer the question.
+
+Output:
+
+{
+  "goal": "...",
+  "retrieval_tasks": [
+      {
+         "query": "...",
+         "purpose": "...",
+         "expected_information": "..."
+      }
+  ],
+  "reasoning_tasks":[
+      ...
+  ]
+}"""
 def domain_for(url: str) -> str:
     host = urlparse(url).netloc.lower()
     return host[4:] if host.startswith("www.") else host
@@ -84,50 +109,20 @@ async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:
     ctx.urls = [item["url"] for item in ranked]
     ctx.search_results = {item["url"]: item for item in ranked}
 
-
+# Uses decomposition method to capture query intent
 async def _query_phrases(query: str, config: dict, llm: callable) -> list[str]:
-    if not _should_optimize_query(query):
-        return [query]
-
     try:
-        result = await llm(
-            prompt=(
-                "Convert this research question into 2 or 3 specific web search keyword phrases. "
-                "Return only a JSON array of strings.\n\n"
-                f"Question: {query}"
-            ),
-            system=config.get("system_prompt", ""),
-        )
-        phrases = json.loads(result.content)
-        if isinstance(phrases, list):
-            clean = [str(item).strip() for item in phrases if str(item).strip()]
-            return clean[:5] or [query]
-# Only in case of exception (Just to hint that exception is possible)
+        decompose_prompt = template.format(query=query)
+        result = await llm(prompt=decompose_prompt)
+        parsed = json.loads(result.content)
+        tasks = parsed.get("retrieval_tasks", [])
+        queries = [t["query"] for t in tasks if t.get("query")]
+        return queries[:5] or [query]
     except Exception:
         return [query]
-    return [query]
 
 
-def _should_optimize_query(query: str) -> bool:
-    lowered = query.strip().lower()
-    return (
-        len(query) > 140
-        or "," in query
-        or lowered.endswith("?")
-        or lowered.startswith((
-            "what ",
-            "why ",
-            "how ",
-            "when ",
-            "where ",
-            "is ",
-            "are ",
-            "compare ",
-            "analyze ",
-            "evaluate ",
-            "research ",
-        ))
-    )
+
 
 
 def _fallback_search_phrases(query: str) -> list[str]:

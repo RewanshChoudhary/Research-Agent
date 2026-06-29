@@ -8,3 +8,5 @@ redis
 beautifulsoup4
 duckduckgo_search
 openai
+sentence-transformers
+weaviate-client
