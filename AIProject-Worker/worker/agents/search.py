@@ -2,7 +2,12 @@ import asyncio
 import json
 from urllib.parse import urlparse
 
+import structlog
+
 from worker.agent_output import ResearchContext
+from worker.core.hyde import search_by_hyde
+
+log = structlog.get_logger()
 
 template="""You are a query decomposition model.
 
@@ -67,6 +72,8 @@ def rank_and_filter_results(
         snippet = item.get("snippet", "")
         haystack = f"{title} {snippet}".lower()
         score = 0
+        if item.get("from_hyde") == "true":
+            score += 80
         if domain_matches(domain, trusted):
             score += 100
         score += sum(3 for word in query_words if word in title.lower())
@@ -84,9 +91,16 @@ def rank_and_filter_results(
 
 async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:
     query = f"{config.get('search_prefix', '')} {ctx.request.query}".strip()
-    phrases = await _query_phrases(query, config, llm)
 
     all_results: list[dict[str, str]] = []
+    try:
+        hyde_results = await search_by_hyde(ctx, n=5)
+        all_results.extend(hyde_results)
+        log.info("hyde_retrieved", count=len(hyde_results))
+    except Exception:
+        log.warning("hyde_search_failed", exc_info=True)
+
+    phrases = await _query_phrases(query, config, llm)
     for phrase in phrases:
         all_results.extend(await _search_ddg(phrase))
     if not all_results:

@@ -1,8 +1,10 @@
-import weaviate
+import time
+
 from sentence_transformers import SentenceTransformer
 
 from worker.agent_output import ResearchContext
 from worker.core.llm import llm_complete
+from worker.db.collections import ensure_collection, ChunkPayload
 from worker.enums import Domain
 
 HYDE_PROMPTS = {
@@ -28,23 +30,14 @@ HYDE_PROMPTS = {
     ),
 }
 
-
-embed_model = None
-client = None
+_embed_model = None
 
 
 def get_embed_model():
-    global embed_model
-    if embed_model is None:
-        embed_model = SentenceTransformer("all-MiniLM-L6-v2")
-    return embed_model
-
-
-def get_weaviate_client():
-    global client
-    if client is None:
-        client = weaviate.connect_to_local()
-    return client
+    global _embed_model
+    if _embed_model is None:
+        _embed_model = SentenceTransformer("all-MiniLM-L6-v2")
+    return _embed_model
 
 
 async def generate_hypothetical_docs(
@@ -65,18 +58,62 @@ async def generate_hypothetical_docs(
     response = await llm_complete(prompt=full_prompt)
     docs = [d.strip() for d in response.content.split("---DOC---") if d.strip()]
 
-    # fallback: if LLM didn't split properly, treat whole output as one doc
     if not docs:
         docs = [response.content.strip()]
 
     return docs[:n]
 
 
+async def search_by_hyde(research_ctx: ResearchContext, n: int) -> list[dict[str, str]]:
+    request = research_ctx.request
+    docs = await generate_hypothetical_docs(request.query, request.domain, 3)
+    col = ensure_collection()
 
-async def create_hyde_embedddings(research_ctx: ResearchContext,n :int):
-    request=research_ctx.request
-    docs : list[str]=await generate_hypothetical_docs(request.query,request.domain,3)
+    vectors = get_embed_model().encode(docs).tolist()
+
+    seen_urls: set[str] = set()
+    deduped: list[dict[str, str]] = []
+    for vec in vectors:
+        response = col.query.near_vector(near_vector=vec, limit=n)
+        for obj in response.objects:
+            url = obj.properties["sourceUrl"]
+            if url not in seen_urls:
+                seen_urls.add(url)
+                deduped.append({
+                    "url": url,
+                    "title": obj.properties.get("title", ""),
+                    "snippet": obj.properties.get("chunkText", "")[:300],
+                    "domain": obj.properties.get("domain", ""),
+                    "from_hyde": "true",
+                })
+
+    return deduped
 
 
-def get_collection():
-    
+def index_chunks(ctx: ResearchContext) -> None:
+    all_texts: list[str] = []
+    payloads: list[ChunkPayload] = []
+
+    for url, chunks in ctx.chunks.items():
+        for idx, chunk_text in enumerate(chunks):
+            all_texts.append(chunk_text)
+            payloads.append(ChunkPayload(
+                chunkText=chunk_text,
+                sourceUrl=url,
+                domain=ctx.request.domain.value,
+                originalQuery=ctx.request.query,
+                title=ctx.search_results[url].get("title", ""),
+                chunkIndex=idx,
+                createdAt=time.time(),
+            ))
+
+    if not all_texts:
+        return
+
+    vectors = get_embed_model().encode(all_texts).tolist()
+    col = ensure_collection()
+
+    col.data.insert_many([
+        {"properties": p.model_dump(), "vector": v}
+        for p, v in zip(payloads, vectors)
+    ])

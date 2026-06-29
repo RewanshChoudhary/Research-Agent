@@ -2,10 +2,14 @@ import asyncio
 import re
 
 import httpx
+import structlog
 from bs4 import BeautifulSoup
 
 from worker.agent_output import ResearchContext
+from worker.core.hyde import index_chunks
 from worker.enums import SourceStatus
+
+log = structlog.get_logger()
 
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -36,9 +40,19 @@ async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:  # pyr
         if title and url in ctx.search_results:
             ctx.search_results[url]["title"] = title
 
+    asyncio.create_task(_index_chunks_background(ctx))
+
     minimum = 2 if ctx.request.maxSources >= 2 else 1
     if len(ctx.scraped_content) < minimum:
         raise RuntimeError("Insufficient source content")
+
+
+async def _index_chunks_background(ctx: ResearchContext) -> None:
+    try:
+        index_chunks(ctx)
+        log.info("chunks_indexed", chunk_count=sum(len(v) for v in ctx.chunks.values()))
+    except Exception:
+        log.warning("chunk_indexing_failed", exc_info=True)
 
 
 async def _scrape_url(client: httpx.AsyncClient, url: str) -> tuple[str, str | None]:
