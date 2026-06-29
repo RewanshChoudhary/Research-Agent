@@ -72,11 +72,36 @@ services:
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.groq.com/openai/v1}
       LLM_MODEL: ${LLM_MODEL:-llama-3.3-70b-versatile}
+      WEAVIATE_URL: http://weaviate:8080
+      WEAVIATE_GRPC_PORT: 50051
     depends_on:
       api:
         condition: service_started
       redis:
         condition: service_healthy
+      weaviate:
+        condition: service_healthy
+
+  weaviate:
+    image: semitechnologies/weaviate:1.28
+    container_name: research-buddy-weaviate
+    restart: unless-stopped
+    environment:
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      DEFAULT_VECTORIZER_MODULE: 'none'
+      CLUSTER_HOSTNAME: 'node1'
+      GRPC_PORT: 50051
+    ports:
+      - "${WEAVIATE_HTTP_PORT:-8081}:8080"
+      - "${WEAVIATE_GRPC_PORT:-50051}:50051"
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   frontend:
     build:
@@ -92,3 +117,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  weaviate_data:

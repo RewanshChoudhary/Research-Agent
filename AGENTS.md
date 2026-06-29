@@ -33,6 +33,11 @@
 - Hypothetical docs are **ephemeral** — generated per-query, never stored.
 - Function: `search_by_hyde(ctx, n)` in `hyde.py` — returns `list[dict[str, str]]` compatible with `rank_and_filter_results()`.
 
+### Infrastructure
+- **Weaviate** container added to `docker-compose.yml` — HTTP on 8080, gRPC on 50051, `DEFAULT_VECTORIZER_MODULE: none`.
+- Worker depends on Weaviate health check, receives `WEAVIATE_URL=http://weaviate:8080` and `WEAVIATE_GRPC_PORT=50051`.
+- `collections.py` `get_weaviate_client()` uses `weaviate.connect_to_custom()` with URL parsing from `WEAVIATE_URL` env var.
+
 ### Fixed Gotchas (as of 2026-06-29)
 - `collections.py` `load_dotenv("COLLECTION_NAME")` → `os.getenv("COLLECTION_NAME", "ResearchChunk")`. `load_dotenv` returns `bool`, not a string.
 - `collections.py` — global `client` renamed to `_client`, lazy-init via `get_weaviate_client()`, no crash on import.

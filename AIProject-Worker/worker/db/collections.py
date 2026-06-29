@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlparse
 
 import weaviate
 from pydantic import BaseModel
@@ -34,7 +35,19 @@ _client = None
 def get_weaviate_client():
     global _client
     if _client is None:
-        _client = weaviate.connect_to_local()
+        raw = os.getenv("WEAVIATE_URL", "http://localhost:8080")
+        parsed = urlparse(raw)
+        host = parsed.hostname or "localhost"
+        http_port = parsed.port or 8080
+        grpc_port = int(os.getenv("WEAVIATE_GRPC_PORT", "50051"))
+        _client = weaviate.connect_to_custom(
+            http_host=host,
+            http_port=http_port,
+            http_secure=parsed.scheme == "https",
+            grpc_host=host,
+            grpc_port=grpc_port,
+            grpc_secure=False,
+        )
     return _client
 
 

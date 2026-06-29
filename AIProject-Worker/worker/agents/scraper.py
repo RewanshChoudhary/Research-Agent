@@ -1,4 +1,5 @@
 import asyncio
+import os
 import re
 
 import httpx
@@ -11,13 +12,16 @@ from worker.enums import SourceStatus
 
 log = structlog.get_logger()
 
+CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "800"))
+CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "100"))
+
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/125.0 Safari/537.36"
 )
 
 
-async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:  # pyright: ignore[reportGeneralTypeIssues]
+async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:
     del config, llm
     async with httpx.AsyncClient(
         timeout=8.0, follow_redirects=True, headers={"User-Agent": USER_AGENT}
@@ -82,17 +86,16 @@ def _largest_text_div(soup: BeautifulSoup):
     return max(divs, key=lambda tag: len(tag.get_text(" ", strip=True)))
 
 
-def chunk_text(text: str, chunk_size: int = 800, overlap: int = 100) -> list[str]:
+def chunk_text(text: str) -> list[str]:
     words = text.split()
     if not words:
         return []
-    if len(words) <= chunk_size:
+    if len(words) <= CHUNK_SIZE:
         return [" ".join(words)]
 
     chunks: list[str] = []
     start = 0
-    step = max(1, chunk_size - overlap)
     while start < len(words):
-        chunks.append(" ".join(words[start : start + chunk_size]))
-        start += step
+        chunks.append(" ".join(words[start : start + CHUNK_SIZE]))
+        start += (CHUNK_SIZE - CHUNK_OVERLAP)
     return chunks

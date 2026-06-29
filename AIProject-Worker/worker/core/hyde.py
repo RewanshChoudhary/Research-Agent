@@ -1,11 +1,15 @@
+import os
 import time
 
 from sentence_transformers import SentenceTransformer
+from weaviate.classes.query import MetadataQuery
 
 from worker.agent_output import ResearchContext
 from worker.core.llm import llm_complete
 from worker.db.collections import ensure_collection, ChunkPayload
 from worker.enums import Domain
+
+MIN_SIMILARITY = float(os.getenv("HYDE_MIN_SIMILARITY", "0.70"))
 
 HYDE_PROMPTS = {
     Domain.GENERAL: (
@@ -19,7 +23,7 @@ HYDE_PROMPTS = {
         "and clinical implications where appropriate. Write 3-4 paragraphs.\n\nQuestion: {query}"
     ),
     Domain.LEGAL: (
-        "You are a legal scholar drafting a passage from a law review article or case brief "
+        "You are a legal holar drafting a passage from a law review article or case brief "
         "that addresses the question below. Reference relevant statutes or case law principles. "
         "Write 3-4 paragraphs.\n\nQuestion: {query}"
     ),
@@ -65,6 +69,7 @@ async def generate_hypothetical_docs(
 
 
 async def search_by_hyde(research_ctx: ResearchContext, n: int) -> list[dict[str, str]]:
+    max_distance = 1.0 - MIN_SIMILARITY
     request = research_ctx.request
     docs = await generate_hypothetical_docs(request.query, request.domain, 3)
     col = ensure_collection()
@@ -74,8 +79,15 @@ async def search_by_hyde(research_ctx: ResearchContext, n: int) -> list[dict[str
     seen_urls: set[str] = set()
     deduped: list[dict[str, str]] = []
     for vec in vectors:
-        response = col.query.near_vector(near_vector=vec, limit=n)
+        response = col.query.near_vector(
+            near_vector=vec,
+            limit=n,
+            return_metadata=MetadataQuery(distance=True),
+        )
         for obj in response.objects:
+            distance = obj.metadata.distance
+            if distance is not None and distance > max_distance:
+                continue
             url = obj.properties["sourceUrl"]
             if url not in seen_urls:
                 seen_urls.add(url)
