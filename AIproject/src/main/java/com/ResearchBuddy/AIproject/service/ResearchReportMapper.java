@@ -70,7 +70,6 @@ public class ResearchReportMapper {
         .url(source.getUrl())
         .title(source.getTitle())
         .domainName(source.getDomainName())
-        .isTrustedSource(source.isTrustedSource())
         .scrapeStatus(source.getScrapeStatus())
         .sourceSummary(source.getSummary())
         .contentLengthChars(source.getContentLength())

@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS sources (
     scrape_status VARCHAR(20) NOT NULL CHECK (scrape_status IN ('SUCCESS', 'FAILED', 'BLOCKED', 'SKIPPED')),
     content_length INTEGER CHECK (content_length >= 0),
     summary TEXT,
-    is_trusted_source BOOLEAN NOT NULL DEFAULT FALSE,
     scraped_at TIMESTAMP
 );
 

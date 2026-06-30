@@ -55,8 +55,7 @@ public class SourceEntity {
   @Column(columnDefinition = "text")
   private String summary;
 
-  @Column(name = "is_trusted_source", nullable = false)
-  private boolean trustedSource;
+
 
   @Column(name = "scraped_at")
   private LocalDateTime scrapedAt;

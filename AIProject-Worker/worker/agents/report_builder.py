@@ -27,7 +27,6 @@ def build_worker_request(ctx: ResearchContext, elapsed_ms: int) -> WorkerComplet
                 scrapeStatus=SourceStatus(status),
                 contentLength=len(ctx.scraped_content.get(url, "")) or None,
                 summary=ctx.source_summaries.get(url),
-                trustedSource=metadata.get("trusted") == "true",
             )
         )
 

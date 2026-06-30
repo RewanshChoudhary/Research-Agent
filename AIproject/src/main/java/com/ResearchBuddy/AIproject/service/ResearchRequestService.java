@@ -54,8 +54,6 @@ public class ResearchRequestService {
         .domain(request.getDomain())
         .factCheckEnabled(request.getFactCheck())
         .query(request.getQuery())
-        .trustedDomains(serializeDomains(request.getTrustedDomains()))
-        .excludeDomains(serializeDomains(request.getExcludeDomains()))
         .build();
     researchJobRepository.save(job);
 
@@ -154,14 +152,4 @@ public class ResearchRequestService {
         .build();
   }
 
-  private String serializeDomains(List<String> domains) {
-    if (domains == null || domains.isEmpty()) {
-      return "[]";
-    }
-    try {
-      return objectMapper.writeValueAsString(domains);
-    } catch (Exception ex) {
-      return "[]";
-    }
-  }
 }

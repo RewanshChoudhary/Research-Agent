@@ -25,10 +25,6 @@ public class SourceResponse {
 
   private String domainName;
 
-  @Builder.Default
-  @NotNull
-  private Boolean isTrustedSource = Boolean.FALSE;
-
   @NotNull
   private ScrapeStatus scrapeStatus;
 

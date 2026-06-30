@@ -67,13 +67,7 @@ private Integer progressPercent = 0;
   @Builder.Default
   private Integer maxSources = 10;
 
-  @Column(name = "trusted_domains", columnDefinition = "text")
-  @Builder.Default
-  private String trustedDomains = "[]";
 
-  @Column(name = "exclude_domains", columnDefinition = "text")
-  @Builder.Default
-  private String excludeDomains = "[]";
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 20)

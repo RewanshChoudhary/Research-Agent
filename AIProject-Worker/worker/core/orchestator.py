@@ -68,10 +68,7 @@ async def run_job(job_id: str) -> None:
 
 async def run(job_id: str) -> None:
     try:
-        await asyncio.wait_for(run_job(job_id), timeout=120)
-    except asyncio.TimeoutError:
-        log.error("job_timed_out", job_id=job_id)
-        await post_job_failure(job_id, WorkerFailRequest(errorMessage="Job timed out after 120 seconds"))
+        await run_job(job_id)
     except Exception as exc:
         log.exception("job_failed", job_id=job_id)
         await post_job_failure(job_id, WorkerFailRequest(errorMessage=str(exc)))

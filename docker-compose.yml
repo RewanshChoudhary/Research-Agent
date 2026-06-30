@@ -1,18 +1,28 @@
+
+
 services:
   postgres:
     image: postgres:16
     container_name: research-buddy-postgres
     restart: unless-stopped
+
     environment:
       POSTGRES_DB: ${DB_NAME:-researchbuddy}
       POSTGRES_USER: ${DB_USERNAME:-researchbuddy}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-researchbuddy}
+
     ports:
       - "${DB_PORT:-5432}:5432"
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-researchbuddy} -d ${DB_NAME:-researchbuddy}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USERNAME:-researchbuddy} -d ${DB_NAME:-researchbuddy}"
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -21,59 +31,106 @@ services:
     image: redis:7
     container_name: research-buddy-redis
     restart: unless-stopped
+
     ports:
       - "${REDIS_PORT:-6379}:6379"
+
     volumes:
       - redis_data:/data
+
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
 
+  weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.38.2
+    container_name: research-buddy-weaviate
+    restart: unless-stopped
+
+    environment:
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      DEFAULT_VECTORIZER_MODULE: "none"
+      CLUSTER_HOSTNAME: "node1"
+      QUERY_DEFAULTS_LIMIT: 20
+      GRPC_PORT: 50051
+
+    ports:
+      - "${WEAVIATE_HTTP_PORT:-8081}:8080"
+      - "${WEAVIATE_GRPC_PORT:-50051}:50051"
+
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+
+    # Uses the built-in readiness endpoint instead of curl
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   api:
     build:
       context: ./AIproject
+
     container_name: research-buddy-api
     restart: unless-stopped
+    init: true
+
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-researchbuddy}
       DB_USERNAME: ${DB_USERNAME:-researchbuddy}
       DB_PASSWORD: ${DB_PASSWORD:-researchbuddy}
+
       REDIS_HOST: redis
       REDIS_PORT: 6379
+
       REDIS_JOB_STREAM: ${REDIS_JOB_STREAM:-research:jobs:stream}
       REDIS_JOB_GROUP: ${REDIS_JOB_GROUP:-research:workers}
       REDIS_DEAD_STREAM: ${REDIS_DEAD_STREAM:-research:jobs:dead}
+
       WORKER_TOKEN: ${WORKER_TOKEN:-dev-worker-secret}
+
     ports:
       - "${API_PORT:-8080}:8080"
+
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      weaviate:
+        condition: service_healthy
 
   worker:
     build:
       context: ./AIProject-Worker
+
     container_name: research-buddy-worker
     restart: unless-stopped
+    init: true
+
     environment:
       JAVA_SERVER_URL: http://api:8080
+
       WORKER_TOKEN: ${WORKER_TOKEN:-dev-worker-secret}
+
       REDIS_URL: redis://redis:6379/0
       REDIS_JOB_STREAM: ${REDIS_JOB_STREAM:-research:jobs:stream}
       REDIS_JOB_GROUP: ${REDIS_JOB_GROUP:-research:workers}
       REDIS_CONSUMER_NAME: ${REDIS_CONSUMER_NAME:-worker-1}
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
-      LLM_API_KEY: ${LLM_API_KEY:-}
-      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.groq.com/openai/v1}
-      LLM_MODEL: ${LLM_MODEL:-llama-3.3-70b-versatile}
+
+      LLM_API_KEY: ollama
+      LLM_BASE_URL: http://ollama:11434/v1
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b}
+
       WEAVIATE_URL: http://weaviate:8080
       WEAVIATE_GRPC_PORT: 50051
+
     depends_on:
       api:
         condition: service_started
@@ -81,35 +138,42 @@ services:
         condition: service_healthy
       weaviate:
         condition: service_healthy
+      ollama:
+        condition: service_healthy
 
-  weaviate:
-    image: semitechnologies/weaviate:1.28
-    container_name: research-buddy-weaviate
+  ollama:
+    image: ollama/ollama
+    container_name: research-buddy-ollama
     restart: unless-stopped
-    environment:
-      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
-      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
-      DEFAULT_VECTORIZER_MODULE: 'none'
-      CLUSTER_HOSTNAME: 'node1'
-      GRPC_PORT: 50051
-    ports:
-      - "${WEAVIATE_HTTP_PORT:-8081}:8080"
-      - "${WEAVIATE_GRPC_PORT:-50051}:50051"
     volumes:
-      - weaviate_data:/var/lib/weaviate
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/.well-known/ready"]
+      test: ["CMD", "ollama", "list"]
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 5
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
   frontend:
     build:
       context: ./frontend
+
     container_name: research-buddy-frontend
     restart: unless-stopped
+
     ports:
       - "${FRONTEND_PORT:-3000}:80"
+
     depends_on:
       api:
         condition: service_started
@@ -118,3 +182,4 @@ volumes:
   postgres_data:
   redis_data:
   weaviate_data:
+  ollama_data:

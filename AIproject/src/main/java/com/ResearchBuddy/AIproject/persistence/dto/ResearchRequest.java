@@ -10,8 +10,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.util.ArrayList;
-import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -49,13 +47,4 @@ public class ResearchRequest {
   @NotNull(message = "outputFormat is required")
   private OutputFormat outputFormat = OutputFormat.JSON;
 
-  @Builder.Default
-  @Size(max = 10, message = "trustedDomains can contain at most 10 domains")
-  private List<@Size(max = 100, message = "each trusted domain must be at most 100 characters") String>
-      trustedDomains = new ArrayList<>();
-
-  @Builder.Default
-  @Size(max = 10, message = "excludeDomains can contain at most 10 domains")
-  private List<@Size(max = 100, message = "each excluded domain must be at most 100 characters") String>
-      excludeDomains = new ArrayList<>();
 }

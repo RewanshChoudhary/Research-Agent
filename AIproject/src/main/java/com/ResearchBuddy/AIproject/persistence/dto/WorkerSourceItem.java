@@ -31,6 +31,4 @@ public class WorkerSourceItem {
 
   private String summary;
 
-  @Builder.Default
-  private Boolean trustedSource = Boolean.FALSE;
 }

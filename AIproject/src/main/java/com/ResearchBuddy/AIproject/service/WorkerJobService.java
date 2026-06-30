@@ -19,15 +19,11 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
 public class WorkerJobService {
-
-    private static final TypeReference<List<String>> STRING_LIST_TYPE = new TypeReference<>() {
-    };
 
     private final ResearchJobRepository researchJobRepository;
     private final ResearchReportRepository researchReportRepository;
@@ -48,8 +44,6 @@ public class WorkerJobService {
                 .depth(job.getDepth())
                 .factCheckEnabled(job.isFactCheckEnabled())
                 .maxSources(job.getMaxSources())
-                .trustedDomains(parseDomains(job.getTrustedDomains()))
-                .excludeDomains(parseDomains(job.getExcludeDomains()))
                 .build();
     }
 
@@ -104,7 +98,6 @@ public class WorkerJobService {
                             .scrapeStatus(item.getScrapeStatus())
                             .contentLength(item.getContentLength())
                             .summary(item.getSummary())
-                            .trustedSource(item.getTrustedSource() != null && item.getTrustedSource())
                             .build())
                     .toList();
             sourceRepository.saveAll(sources);
@@ -172,14 +165,4 @@ public class WorkerJobService {
         return value.substring(0, maxLength);
     }
 
-    private List<String> parseDomains(String domainsJson) {
-        if (domainsJson == null || domainsJson.isBlank()) {
-            return List.of();
-        }
-        try {
-            return objectMapper.readValue(domainsJson, STRING_LIST_TYPE);
-        } catch (Exception ex) {
-            return List.of();
-        }
-    }
 }

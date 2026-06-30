@@ -11,14 +11,6 @@ const progressBar = document.querySelector("#progress-bar");
 let currentJobId = "";
 let pollTimer = null;
 
-function domainsFrom(value) {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .slice(0, 10);
-}
-
 function payloadFromForm() {
   const data = new FormData(form);
   return {
@@ -28,8 +20,6 @@ function payloadFromForm() {
     factCheck: data.get("factCheck") === "on",
     maxSources: Number(data.get("maxSources")),
     outputFormat: data.get("outputFormat"),
-    trustedDomains: domainsFrom(data.get("trustedDomains") || ""),
-    excludeDomains: domainsFrom(data.get("excludeDomains") || ""),
   };
 }
 
@@ -57,17 +47,27 @@ function showError(error) {
 }
 
 function renderStatus(status) {
+  const label = (status.status || "unknown").toLowerCase();
   statusTitle.textContent = status.status || "Unknown";
+  statusTitle.className = `status-${label}`;
   currentJobId = status.jobId || currentJobId;
   pollButton.disabled = !currentJobId;
 
-  const percent = status.progressPercent ?? 0;
+  const percent = Math.max(0, Math.min(100, status.progressPercent ?? 0));
   progress.hidden = false;
-  progressBar.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+  progressBar.style.width = `${percent}%`;
+
+  let progressLabel = document.querySelector("#progress-label");
+  if (!progressLabel) {
+    progressLabel = document.createElement("div");
+    progressLabel.id = "progress-label";
+    progressLabel.className = "progress-label";
+    progress.after(progressLabel);
+  }
+  progressLabel.innerHTML = `<span>${status.currentStage || "Processing"}</span><span>${percent}%</span>`;
 
   jobMeta.innerHTML = [
     currentJobId ? `<div>Job: <strong>${currentJobId}</strong></div>` : "",
-    status.currentStage ? `<div>Stage: <strong>${status.currentStage}</strong></div>` : "",
     status.query ? `<div>Query: ${status.query}</div>` : "",
   ].join("");
 

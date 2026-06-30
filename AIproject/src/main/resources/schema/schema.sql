@@ -17,8 +17,6 @@ CREATE TABLE IF NOT EXISTS research_jobs (
     depth VARCHAR(20) NOT NULL CHECK (depth IN ('QUICK', 'STANDARD', 'DEEP')),
     fact_check_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     max_sources INTEGER NOT NULL CHECK (max_sources > 0),
-    trusted_domains TEXT NOT NULL DEFAULT '[]',
-    exclude_domains TEXT NOT NULL DEFAULT '[]',
     status VARCHAR(20) NOT NULL CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')),
     current_stage VARCHAR(50),
     error_message TEXT,
@@ -52,7 +50,6 @@ CREATE TABLE IF NOT EXISTS sources (
     scrape_status VARCHAR(20) NOT NULL CHECK (scrape_status IN ('SUCCESS', 'FAILED', 'BLOCKED', 'SKIPPED')),
     content_length INTEGER CHECK (content_length >= 0),
     summary TEXT,
-    is_trusted_source BOOLEAN NOT NULL DEFAULT FALSE,
     scraped_at TIMESTAMP
 );
 

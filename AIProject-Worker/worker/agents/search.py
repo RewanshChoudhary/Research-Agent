@@ -48,13 +48,8 @@ def domain_matches(domain: str, patterns: list[str]) -> bool:
 def rank_and_filter_results(
     results: list[dict[str, str]],
     query: str,
-    config: dict,
-    trusted_domains: list[str],
-    excluded_domains: list[str],
     max_sources: int,
 ) -> list[dict[str, str]]:
-    trusted = [*config.get("trusted_sources", []), *trusted_domains]
-    excluded = [*config.get("excluded_sources", []), *excluded_domains]
     query_words = {word.lower() for word in query.split() if len(word) > 3}
     seen: set[str] = set()
     scored: list[tuple[int, dict[str, str]]] = []
@@ -65,8 +60,6 @@ def rank_and_filter_results(
             continue
         seen.add(url)
         domain = domain_for(url)
-        if domain_matches(domain, excluded):
-            continue
 
         title = item.get("title", "")
         snippet = item.get("snippet", "")
@@ -74,15 +67,11 @@ def rank_and_filter_results(
         score = 0
         if item.get("from_hyde") == "true":
             score += 80
-        if domain_matches(domain, trusted):
-            score += 100
         score += sum(3 for word in query_words if word in title.lower())
         score += sum(1 for word in query_words if word in haystack)
         score += min(len(snippet), 240) // 40
-        if domain_matches(domain, ["reddit.com", "quora.com"]) and config.get("fact_check_threshold", 0.7) >= 0.85:
-            score -= 50
 
-        enriched = {**item, "domain": domain, "trusted": str(domain_matches(domain, trusted)).lower()}
+        enriched = {**item, "domain": domain}
         scored.append((score, enriched))
 
     scored.sort(key=lambda pair: pair[0], reverse=True)
@@ -112,9 +101,6 @@ async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:
     ranked = rank_and_filter_results(
         all_results,
         query,
-        config,
-        ctx.request.trustedDomains,
-        ctx.request.excludeDomains,
         ctx.request.maxSources,
     )
     if not ranked:
@@ -173,7 +159,7 @@ async def _search_ddg(query: str) -> list[dict[str, str]]:
     loop = asyncio.get_running_loop()
 
     def _sync_search() -> list[dict]:
-        from duckduckgo_search import DDGS
+        from ddgs import DDGS
 
         with DDGS() as ddgs:
             return list(ddgs.text(query, max_results=10))

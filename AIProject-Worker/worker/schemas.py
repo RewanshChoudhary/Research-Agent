@@ -38,16 +38,7 @@ class ResearchRequest(BaseModel):
         default=OutputFormat.JSON,
         description="Requested output format — Java does final rendering",
     )
-    trustedDomains: list[str] = Field(
-        default_factory=list,
-        description="Domains to prefer during URL scoring (max 10)",
-        max_length=10,
-    )
-    excludeDomains: list[str] = Field(
-        default_factory=list,
-        description="Domains to exclude during URL filtering (max 10)",
-        max_length=10,
-    )
+
 
 
 
@@ -75,10 +66,6 @@ class WorkerJobDetailsResponse(BaseModel):
     maxSources: int = Field(
         ge=1, le=20, description="Maximum number of URLs to scrape and summarize"
     )
-    trustedDomains: list[str] = Field(default_factory=list)
-    excludeDomains: list[str] = Field(default_factory=list)
-
-
 class WorkerStatusUpdateRequest(BaseModel):
     status: JobStatus
     currentStage: PipelineStage | None = Field(
@@ -96,11 +83,6 @@ class WorkerSourceItem(BaseModel):
     )
     contentLength: int | None = Field(description="Extracted text length in characters")
     summary: str | None = Field(description="Per-source LLM summary")
-    trustedSource: bool = Field(
-        default=False, description="Whether this URL matched a trusted domain"
-    )
-
-
 class WorkerCompleteRequest(BaseModel):
     summary: str = Field(min_length=1, description="Combined research summary")
     keyFindings: Annotated[list[str], Field(min_length=1)] = Field(

@@ -20,7 +20,7 @@ if not API_KEY:
 client = AsyncOpenAI(
     api_key=API_KEY or "missing-key",
     base_url=BASE_URL,
-    timeout=30.0,
+    timeout=None,
 )
 
 @dataclass
