@@ -1,7 +1,7 @@
-import json
 import re
 
 from worker.agent_output import FactCheckResult, ResearchContext
+from worker.core.json_utils import parse_json_from_llm
 
 STOP_WORDS = {
     "about", "after", "again", "also", "because", "before", "being", "between", "could",
@@ -55,7 +55,7 @@ async def _extract_claims(summary: str, config: dict, llm: callable, ctx: Resear
     result = await llm(
         prompt=(
             "Extract up to 12 specific factual claims from this research summary. "
-            "Return only a JSON array of strings.\n\n"
+            "Return only a JSON array of strings, with no markdown formatting.\n\n"
             f"{summary}"
         ),
         system=config.get("system_prompt", ""),
@@ -63,12 +63,18 @@ async def _extract_claims(summary: str, config: dict, llm: callable, ctx: Resear
     ctx.llm_calls += 1
     ctx.total_tokens += result.total_tokens
     try:
-        parsed = json.loads(result.content)
+        parsed = parse_json_from_llm(result.content)
         if isinstance(parsed, list):
             return [str(item).strip() for item in parsed if str(item).strip()][:12]
-    except json.JSONDecodeError:
+    except Exception:
         pass
-    return [sentence.strip() for sentence in re.split(r"(?<=[.!?])\s+", summary) if len(sentence.split()) >= 6][:12]
+    # Fallback: split on sentence boundaries and keep only substantial sentences
+    sentences = re.split(r"(?<=[.!?])\s+", summary)
+    return [
+        s.strip()
+        for s in sentences
+        if len(s.split()) >= 8  # require at least 8 words to be a meaningful claim
+    ][:12]
 
 
 async def _verdict(

@@ -124,9 +124,9 @@ services:
       REDIS_JOB_GROUP: ${REDIS_JOB_GROUP:-research:workers}
       REDIS_CONSUMER_NAME: ${REDIS_CONSUMER_NAME:-worker-1}
 
-      LLM_API_KEY: ollama
-      LLM_BASE_URL: http://ollama:11434/v1
-      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b}
+      LLM_API_KEY: ${MISTRAL_API_KEY}
+      LLM_BASE_URL: https://integrate.api.nvidia.com/v1
+      LLM_MODEL: ${LLM_MODEL:-nvidia/llama-3.1-nemotron-70b-instruct}
 
       WEAVIATE_URL: http://weaviate:8080
       WEAVIATE_GRPC_PORT: 50051
@@ -138,31 +138,6 @@ services:
         condition: service_healthy
       weaviate:
         condition: service_healthy
-      ollama:
-        condition: service_healthy
-
-  ollama:
-    image: ollama/ollama
-    container_name: research-buddy-ollama
-    restart: unless-stopped
-    volumes:
-      - ollama_data:/root/.ollama
-    ports:
-      - "11434:11434"
-    environment:
-      - OLLAMA_KEEP_ALIVE=24h
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
 
   frontend:
     build:
@@ -182,4 +157,3 @@ volumes:
   postgres_data:
   redis_data:
   weaviate_data:
-  ollama_data:

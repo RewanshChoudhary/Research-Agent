@@ -1,6 +1,7 @@
 import json
 
 from worker.agent_output import AnalystInsights, Perspective, ResearchContext
+from worker.core.json_utils import parse_json_from_llm
 
 
 async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:
@@ -9,11 +10,12 @@ async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:
     source_block = "\n\n".join(
         f"{url}\n{summary}" for url, summary in ctx.source_summaries.items()
     )
-    result: str = await llm(
+    result = await llm(
         prompt=(
             "Analyze this research material. Return only JSON with keys: "
             "patterns (array of strings), perspectives (array of objects with viewpoint, description, "
-            "supporting_source_urls), knowledge_gaps (array of strings), further_reading (array of strings).\n\n"
+            "supporting_source_urls), knowledge_gaps (array of strings), further_reading (array of strings). "
+            "Do not wrap the JSON in markdown code fences.\n\n"
             f"Combined summary:\n{ctx.combined_summary}\n\nSource summaries:\n{source_block}"
         ),
         system=config.get("system_prompt", ""),
@@ -25,8 +27,8 @@ async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:
 
 def _parse_insights(content: str) -> AnalystInsights:
     try:
-        data = json.loads(content)
-    except json.JSONDecodeError:
+        data = parse_json_from_llm(content)
+    except Exception:
         data = {}
 
     perspectives = []

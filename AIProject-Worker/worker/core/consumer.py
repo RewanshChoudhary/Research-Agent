@@ -6,7 +6,7 @@ import redis.asyncio as aioredis
 import structlog
 from dotenv import load_dotenv
 
-from worker.core.orchestator import run
+from worker.core.orchestrator import run
 
 load_dotenv()
 log = structlog.get_logger()

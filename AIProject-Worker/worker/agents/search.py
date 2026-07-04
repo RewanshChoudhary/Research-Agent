@@ -6,6 +6,7 @@ import structlog
 
 from worker.agent_output import ResearchContext
 from worker.core.hyde import search_by_hyde
+from worker.core.json_utils import parse_json_from_llm
 
 log = structlog.get_logger()
 
@@ -114,7 +115,7 @@ async def _query_phrases(query: str, config: dict, llm: callable) -> list[str]:
     try:
         decompose_prompt = template.format(query=query)
         result = await llm(prompt=decompose_prompt)
-        parsed = json.loads(result.content)
+        parsed = parse_json_from_llm(result.content)
         tasks = parsed.get("retrieval_tasks", [])
         queries = [t["query"] for t in tasks if t.get("query")]
         return queries[:5] or [query]

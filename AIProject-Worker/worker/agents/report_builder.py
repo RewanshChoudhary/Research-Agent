@@ -1,6 +1,7 @@
 import json
 
 from worker.agent_output import ResearchContext
+from worker.core.json_utils import parse_json_from_llm
 from worker.enums import SourceStatus
 from worker.schemas import WorkerCompleteRequest, WorkerSourceItem
 from worker.agents.search import domain_for
@@ -47,14 +48,14 @@ async def _key_findings(ctx: ResearchContext, config: dict, llm: callable) -> li
         result = await llm(
             prompt=(
                 "Extract 3 to 7 concise key findings from this research summary. "
-                "Return only a JSON array of strings.\n\n"
+                "Return only a JSON array of strings, with no markdown formatting.\n\n"
                 f"{ctx.combined_summary}"
             ),
             system=config.get("system_prompt", ""),
         )
         ctx.llm_calls += 1
         ctx.total_tokens += result.total_tokens
-        parsed = json.loads(result.content)
+        parsed = parse_json_from_llm(result.content)
         if isinstance(parsed, list):
             return [str(item).strip() for item in parsed if str(item).strip()][:7]
     except Exception:
