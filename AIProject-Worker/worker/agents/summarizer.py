@@ -12,9 +12,16 @@ async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:
         url for url in ctx.chunks if url in ctx.scraped_content
     ]
 
+    # Limit concurrency for local models to avoid overloading (2 is safer for local models)
+    sem = asyncio.Semaphore(2)
+    
+    async def sem_llm(*args, **kwargs):
+        async with sem:
+            return await llm(*args, **kwargs)
+
     # Summarize all sources concurrently instead of sequentially
     results = await asyncio.gather(
-        *[_summarize_source(url, ctx.chunks[url], config, llm, ctx) for url in urls_to_summarize],
+        *[_summarize_source(url, ctx.chunks[url], config, sem_llm, ctx) for url in urls_to_summarize],
         return_exceptions=True,
     )
 
@@ -50,18 +57,30 @@ async def _summarize_source(
     llm: callable,
     ctx: ResearchContext,
 ) -> str:
-    # Summarize all chunks within a source concurrently
+    # Batch chunks to reduce the total number of LLM requests.
+    # Each chunk is ~800 words, batching 3 chunks is ~2400 words (well within context limits)
+    batched_chunks = []
+    current_batch = []
+    for chunk in chunks:
+        current_batch.append(chunk)
+        if len(current_batch) == 3:
+            batched_chunks.append("\n\n---\n\n".join(current_batch))
+            current_batch = []
+    if current_batch:
+        batched_chunks.append("\n\n---\n\n".join(current_batch))
+
+    # Summarize all batches within a source concurrently
     chunk_results = await asyncio.gather(
         *[
             llm(
                 prompt=(
                     "Summarize this source excerpt for a research report. "
                     "Focus on verifiable claims, evidence, limitations, and concrete details.\n\n"
-                    f"URL: {url}\n\n{chunk}"
+                    f"URL: {url}\n\n{batch}"
                 ),
                 system=config.get("system_prompt", ""),
             )
-            for chunk in chunks
+            for batch in batched_chunks
         ],
         return_exceptions=True,
     )
