@@ -10,9 +10,9 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 dotenv.load_dotenv()
 log = structlog.get_logger()
 
-BASE_URL = os.getenv("LLM_BASE_URL", "https://integrate.api.nvidia.com/v1")
-API_KEY = os.getenv("MISTRAL_API_KEY") or os.getenv("GROQ_API_KEY") or os.getenv("LLM_API_KEY")
-DEFAULT_MODEL = os.getenv("LLM_MODEL", "nvidia/llama-3.1-nemotron-70b-instruct")
+BASE_URL = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
+API_KEY = os.getenv("LLM_API_KEY") or os.getenv("GROQ_API_KEY")
+DEFAULT_MODEL = os.getenv("LLM_MODEL", "llama3-groq-8b-8192-tool-use-preview")
 
 if not API_KEY:
     log.warning("llm_api_key_missing", expected="GROQ_API_KEY or LLM_API_KEY")
