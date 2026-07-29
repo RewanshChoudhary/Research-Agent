@@ -53,7 +53,7 @@ async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:
 
 async def _index_chunks_background(ctx: ResearchContext) -> None:
     try:
-        index_chunks(ctx)
+        await asyncio.to_thread(index_chunks, ctx)
         log.info("chunks_indexed", chunk_count=sum(len(v) for v in ctx.chunks.values()))
     except Exception:
         log.warning("chunk_indexing_failed", exc_info=True)

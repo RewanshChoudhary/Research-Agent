@@ -2,6 +2,7 @@ import os
 import time
 
 from sentence_transformers import SentenceTransformer
+from weaviate.classes.data import DataObject
 from weaviate.classes.query import MetadataQuery
 
 from worker.agent_output import ResearchContext
@@ -126,6 +127,6 @@ def index_chunks(ctx: ResearchContext) -> None:
     col = ensure_collection()
 
     col.data.insert_many([
-        {"properties": p.model_dump(), "vector": v}
+        DataObject(properties=p.model_dump(), vector=v)
         for p, v in zip(payloads, vectors)
     ])

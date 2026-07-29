@@ -59,4 +59,8 @@ public class SourceEntity {
 
   @Column(name = "scraped_at")
   private LocalDateTime scrapedAt;
+
+  @Builder.Default
+  @Column(name = "is_trusted_source", nullable = false)
+  private Boolean isTrustedSource = true;
 }

@@ -6,6 +6,8 @@ import structlog
 from openai import AsyncOpenAI, RateLimitError, APITimeoutError, APIConnectionError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
+from worker.core.prompt_chunker import count_tokens, chunk_content, fits_in_context, MAX_PROMPT_TOKENS
+
 
 dotenv.load_dotenv()
 log = structlog.get_logger()
@@ -13,6 +15,7 @@ log = structlog.get_logger()
 BASE_URL = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
 API_KEY = os.getenv("LLM_API_KEY") or os.getenv("GROQ_API_KEY")
 DEFAULT_MODEL = os.getenv("LLM_MODEL", "llama3-groq-8b-8192-tool-use-preview")
+LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "60.0"))
 
 if not API_KEY:
     log.warning("llm_api_key_missing", expected="GROQ_API_KEY or LLM_API_KEY")
@@ -20,7 +23,7 @@ if not API_KEY:
 client = AsyncOpenAI(
     api_key=API_KEY or "missing-key",
     base_url=BASE_URL,
-    timeout=None,
+    timeout=LLM_TIMEOUT,
 )
 
 @dataclass
@@ -39,6 +42,19 @@ async def llm_complete(
     system: str = "",
     model: str = "",
 ) -> LLMResponse:
+    prompt_tok = count_tokens(prompt)
+    system_tok = count_tokens(system)
+    total = prompt_tok + system_tok
+    if total > MAX_PROMPT_TOKENS:
+        log.warning(
+            "prompt_exceeds_context_window",
+            prompt_tokens=prompt_tok,
+            system_tokens=system_tok,
+            max_allowed=MAX_PROMPT_TOKENS,
+        )
+    else:
+        log.debug("llm_call", prompt_tokens=prompt_tok, system_tokens=system_tok)
+
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
@@ -59,3 +75,38 @@ async def llm_complete(
         content=resp.choices[0].message.content or "",
         total_tokens=resp.usage.total_tokens if resp.usage else 0,
     )
+
+
+async def chunked_llm_complete(
+    prompt: str,
+    system: str = "",
+    model: str = "",
+) -> LLMResponse:
+    if fits_in_context(prompt, system):
+        return await llm_complete(prompt=prompt, system=system, model=model)
+
+    system_tok = count_tokens(system)
+    available = MAX_PROMPT_TOKENS - system_tok
+
+    log.warning(
+        "splitting_oversized_prompt",
+        total_tokens=count_tokens(prompt) + system_tok,
+        max_allowed=MAX_PROMPT_TOKENS,
+        available_for_content=available,
+    )
+
+    chunks = chunk_content(prompt, max_tokens=available)
+
+    results: list[LLMResponse] = []
+    total_tok = 0
+    for i, chunk in enumerate(chunks):
+        log.info("chunked_llm_call", chunk_index=i, total_chunks=len(chunks))
+        resp = await llm_complete(prompt=chunk, system=system, model=model)
+        results.append(resp)
+        total_tok += resp.total_tokens
+
+    if len(results) == 1:
+        return results[0]
+
+    combined = "\n\n".join(r.content.strip() for r in results)
+    return LLMResponse(content=combined, total_tokens=total_tok)

@@ -52,7 +52,7 @@ public class ResearchRequestService {
         .depth(request.getDepth())
         .maxSources(request.getMaxSources())
         .domain(request.getDomain())
-        .factCheckEnabled(request.getFactCheck())
+        .factCheckEnabled(Boolean.TRUE.equals(request.getFactCheck()))
         .query(request.getQuery())
         .build();
     researchJobRepository.save(job);
