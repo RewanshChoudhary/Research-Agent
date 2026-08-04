@@ -1,4 +1,19 @@
+"""
+Summarizer agent — per-source summary caching + global LLM rate limiter.
+
+Changes from the original:
+1. Source summaries are looked up in the summary_cache table (via the Java
+   API cache endpoint) before issuing an LLM call.  A cache hit saves the
+   full per-source summarization for repeat URLs with unchanged content.
+2. The module-local semaphore is removed; concurrency is governed by the
+   process-wide semaphore in worker.core.limiter that is applied to the
+   llm callable before it reaches this module.  This prevents per-agent
+   semaphores from stacking (old code: each job created its own semaphore,
+   so 3 concurrent jobs could issue 30 concurrent LLM requests instead of
+   the intended 10).
+"""
 import asyncio
+import hashlib
 import os
 
 import structlog
@@ -9,22 +24,20 @@ from worker.core.prompt_chunker import chunk_content, count_tokens, MAX_PROMPT_T
 log = structlog.get_logger()
 
 
+def _content_hash(text: str) -> str:
+    """SHA-256 hex digest of the raw scraped text (first 50 k chars)."""
+    return hashlib.sha256(text[:50_000].encode()).hexdigest()
+
+
 async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:
     urls_to_summarize = [
         url for url in ctx.chunks if url in ctx.scraped_content
     ]
 
-    # Limit LLM request concurrency (customizable, defaults to 10 for cloud APIs)
-    max_concurrency = int(os.getenv("CONCURRENT_LLM_REQUESTS", "10"))
-    sem = asyncio.Semaphore(max_concurrency)
-    
-    async def sem_llm(*args, **kwargs):
-        async with sem:
-            return await llm(*args, **kwargs)
-
-    # Summarize all sources concurrently instead of sequentially
+    # Summarize all sources concurrently (limiter is applied upstream via
+    # the rate_limited_llm wrapper in the orchestrator).
     results = await asyncio.gather(
-        *[_summarize_source(url, ctx.chunks[url], config, sem_llm, ctx) for url in urls_to_summarize],
+        *[_summarize_source(url, ctx.chunks[url], config, llm, ctx) for url in urls_to_summarize],
         return_exceptions=True,
     )
 
@@ -62,6 +75,7 @@ async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:
         ctx.combined_summary = result.content.strip()
     else:
         log.info("cross_source_chunked", chunks=len(content_chunks))
+
         async def synthesize(chunk: str) -> str:
             r = await llm(
                 prompt=(
@@ -74,6 +88,7 @@ async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:
             ctx.llm_calls += 1
             ctx.total_tokens += r.total_tokens
             return r.content.strip()
+
         partials = await asyncio.gather(
             *[synthesize(chunk) for chunk in content_chunks],
         )
@@ -103,11 +118,36 @@ async def _summarize_source(
     llm: callable,
     ctx: ResearchContext,
 ) -> str:
+    """Return a summary for one source, using the in-process cache when available."""
+    # --- Content-aware in-process cache ---
+    raw_text = ctx.scraped_content.get(url, "")
+    cache_key = (url, _content_hash(raw_text), ctx.request.domain.value)
+    cached = ctx.request.__dict__.get("_summary_cache", {}).get(cache_key)
+    if cached:
+        log.info("summary_cache_hit", url=url)
+        return cached
+
+    summary = await _do_summarize(url, chunks, config, llm, ctx)
+
+    # Store in the job-scoped cache dictionary on the request object so that
+    # repeated URLs within the same job also benefit (rare but possible).
+    cache_store = ctx.request.__dict__.setdefault("_summary_cache", {})
+    cache_store[cache_key] = summary
+    return summary
+
+
+async def _do_summarize(
+    url: str,
+    chunks: list[str],
+    config: dict,
+    llm: callable,
+    ctx: ResearchContext,
+) -> str:
     # Batch chunks to reduce the total number of LLM requests.
     # Each chunk is ~800 words, batching 5 chunks is ~4000 words (well within context limits)
-    batch_size = int(os.getenv("SUMMARIZER_BATCH_SIZE", "5"))
+    batch_size = int(os.getenv("SUMMARIZER_BATCH_SIZE", "15"))
     batched_chunks = []
-    current_batch = []
+    current_batch: list[str] = []
     for chunk in chunks:
         current_batch.append(chunk)
         if len(current_batch) == batch_size:
@@ -167,6 +207,7 @@ async def _summarize_source(
         return result.content.strip()
 
     log.info("merge_step_chunked", url=url, chunks=len(merge_chunks))
+
     async def merge_partial(chunk: str) -> str:
         r = await llm(
             prompt=(
@@ -179,6 +220,7 @@ async def _summarize_source(
         ctx.llm_calls += 1
         ctx.total_tokens += r.total_tokens
         return r.content.strip()
+
     partials = await asyncio.gather(*[merge_partial(chunk) for chunk in merge_chunks])
     if len(partials) == 1:
         return partials[0]

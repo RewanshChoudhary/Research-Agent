@@ -8,12 +8,20 @@ from bs4 import BeautifulSoup
 
 from worker.agent_output import ResearchContext
 from worker.core.hyde import index_chunks
-from worker.enums import SourceStatus
+from worker.enums import Depth, SourceStatus
 
 log = structlog.get_logger()
 
 CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "800"))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "100"))
+
+# Maximum sources scrapped per depth level.
+# These caps prevent over-spending token budget on free-tier APIs.
+DEPTH_SOURCE_CAPS = {
+    Depth.QUICK: int(os.getenv("MAX_SOURCES_QUICK", "3")),
+    Depth.STANDARD: int(os.getenv("MAX_SOURCES_STANDARD", "5")),
+    Depth.DEEP: int(os.getenv("MAX_SOURCES_DEEP", "10")),
+}
 
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
@@ -23,8 +31,19 @@ USER_AGENT = (
 
 async def run(ctx: ResearchContext, config: dict, llm: callable) -> None:
     del config, llm
+    # Enforce a depth-specific source cap so free-tier TPM limits are not blown.
+    depth_cap = DEPTH_SOURCE_CAPS.get(ctx.request.depth, len(ctx.urls))
+    if len(ctx.urls) > depth_cap:
+        log.info(
+            "source_cap_applied",
+            original=len(ctx.urls),
+            capped=depth_cap,
+            depth=ctx.request.depth.value,
+        )
+        ctx.urls = ctx.urls[:depth_cap]
+
     async with httpx.AsyncClient(
-        timeout=8.0, follow_redirects=True, headers={"User-Agent": USER_AGENT}
+        timeout=4.0, follow_redirects=True, headers={"User-Agent": USER_AGENT}
     ) as client:
         results = await asyncio.gather(
             *[_scrape_url(client, url) for url in ctx.urls], return_exceptions=True

@@ -1,3 +1,19 @@
+"""
+Prompt chunker — model-aware context configuration.
+
+The original hard-coded MAX_CONTEXT_TOKENS=128000 which is only valid for
+large-context models (e.g. llama-3.1-70b-128k).  The Compose default model
+is `llama3-groq-8b-8192-tool-use-preview` which has an 8 192-token context.
+Sending 128 k-sized prompts to an 8 k model causes the provider to either
+truncate silently or raise an error — triggering the expensive 4-60 s tenacity
+retry loop.
+
+Set MAX_CONTEXT_TOKENS in .env to match your actual deployed model:
+  - Groq llama3-8b-8192        →  8 192
+  - Groq llama-3.3-70b-versatile → 128 000
+  - NVIDIA NIM nemotron-70b    → 128 000
+"""
+
 import os
 
 import structlog
@@ -7,9 +23,12 @@ import tiktoken
 log = structlog.get_logger()
 
 ENCODING_NAME = os.getenv("TOKENIZER_ENCODING", "cl100k_base")
-MAX_CONTEXT_TOKENS = int(os.getenv("MAX_CONTEXT_TOKENS", "128000"))
-RESERVED_OUTPUT_TOKENS = int(os.getenv("RESERVED_OUTPUT_TOKENS", "4000"))
-CHUNK_OVERLAP_TOKENS = int(os.getenv("CHUNK_PROMPT_OVERLAP", "200"))
+
+# Default to a conservative 8 192 tokens to match the Groq default model.
+# Override via MAX_CONTEXT_TOKENS= in .env for large-context models.
+MAX_CONTEXT_TOKENS = int(os.getenv("MAX_CONTEXT_TOKENS", "8192"))
+RESERVED_OUTPUT_TOKENS = int(os.getenv("RESERVED_OUTPUT_TOKENS", "1024"))
+CHUNK_OVERLAP_TOKENS = int(os.getenv("CHUNK_PROMPT_OVERLAP", "100"))
 
 MAX_PROMPT_TOKENS = MAX_CONTEXT_TOKENS - RESERVED_OUTPUT_TOKENS
 

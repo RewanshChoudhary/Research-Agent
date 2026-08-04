@@ -1,4 +1,4 @@
-# ResearchBuddy — Project Context
+# Research-Agent — Project Context
 
 ## What It Is
 
@@ -78,7 +78,7 @@ Frontend (nginx) → Spring Boot API (Java 25) → Redis Stream → Python Worke
 ## Project Structure
 
 ```
-ResearchBuddy/
+Research-Agent/
 ├── docker-compose.yml           # 6 services (postgres, redis, weaviate, api, worker, frontend)
 ├── .env.example                 # Template for all env vars
 ├── .env                         # Active config (git-ignored)
@@ -87,7 +87,7 @@ ResearchBuddy/
 ├── AIproject/                   # === Spring Boot API ===
 │   ├── pom.xml                  # Maven with spring-ai BOM 2.0.0-M2, langchain4j
 │   ├── Dockerfile               # Multi-stage: eclipse-temurin:25-jdk → jre
-│   └── src/main/java/com/ResearchBuddy/AIproject/
+│   └── src/main/java/com/ResearchAgent/AIproject/
 │       ├── AIprojectApplication.java
 │       ├── auth/WorkerInterceptor.java          # X-Worker-Token validation
 │       ├── config/RedisStreamsConfig.java        # Stream + consumer group init
@@ -154,6 +154,7 @@ ResearchBuddy/
 
 ## Key Architectural Decisions
 
+- **Project name: Research-Agent** — Display name is `Research-Agent`. Identifiers that cannot contain hyphens use: Java/Maven `com.ResearchAgent`, Docker containers `research-agent-*`, DB credentials `researchagent`, local user email `local@research-agent.dev`.
 - **Async worker**: All I/O in Python is asyncio (HTTP, Redis, LLM, embeddings)
 - **Fire-and-forget Weaviate indexing**: Scraped chunks indexed in background via `asyncio.create_task()`, never blocks pipeline
 - **HYDE + hybrid search**: LLM generates hypothetical answer docs → embed → `nearVector` in Weaviate → results get +80 ranking boost over DDGS results

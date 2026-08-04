@@ -48,7 +48,7 @@ def get_embed_model():
 async def generate_hypothetical_docs(
     query: str,
     domain: Domain,
-    n: int = 3,
+    n: int = 1,
 ) -> list[str]:
     template = HYDE_PROMPTS.get(domain, HYDE_PROMPTS[Domain.GENERAL])
     prompt = template.format(query=query)

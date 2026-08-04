@@ -71,15 +71,22 @@ function renderStatus(status) {
     status.query ? `<div>Query: ${status.query}</div>` : "",
   ].join("");
 
-  result.textContent = JSON.stringify(status, null, 2);
-
   if (status.status === "COMPLETED") {
     stopPolling();
-    fetchReport(currentJobId);
+    // The job status response already contains the full report when COMPLETED.
+    // Use it directly to avoid a second round-trip to /report.
+    if (status.report) {
+      result.textContent = JSON.stringify(status.report, null, 2);
+    } else {
+      result.textContent = JSON.stringify(status, null, 2);
+      fetchReport(currentJobId);
+    }
+    return;
   }
   if (status.status === "FAILED") {
     stopPolling();
   }
+  result.textContent = JSON.stringify(status, null, 2);
 }
 
 function startPolling() {
@@ -88,7 +95,7 @@ function startPolling() {
     if (currentJobId) {
       pollStatus(currentJobId);
     }
-  }, 2500);
+  }, 1000);
 }
 
 function stopPolling() {

@@ -8,7 +8,7 @@ from worker.schemas import ResearchRequest
 @dataclass
 class ResearchContext:
     request: ResearchRequest
-    urls: list[str] =field(default_factory=list)
+    urls: list[str] = field(default_factory=list)
     search_results: dict[str, dict[str, str]] = field(default_factory=dict)
     scraped_content: dict[str, str] = field(default_factory=dict)
     scrape_status: dict[str, str] = field(default_factory=dict)
@@ -21,6 +21,8 @@ class ResearchContext:
     key_findings: list[str] = field(default_factory=list)
     total_tokens: int = 0
     llm_calls: int = 0
+    # Optional Redis client injected by the consumer for cross-job caching
+    redis_client: object | None = None
 
 
 @dataclass

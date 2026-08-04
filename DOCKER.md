@@ -1,4 +1,4 @@
-# ResearchBuddy Docker Setup
+# Research-Agent Docker Setup
 
 ## Start Everything
 

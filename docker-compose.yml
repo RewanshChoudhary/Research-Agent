@@ -3,13 +3,13 @@
 services:
   postgres:
     image: postgres:16
-    container_name: research-buddy-postgres
+    container_name: research-agent-postgres
     restart: no
 
     environment:
-      POSTGRES_DB: ${DB_NAME:-researchbuddy}
-      POSTGRES_USER: ${DB_USERNAME:-researchbuddy}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-researchbuddy}
+      POSTGRES_DB: ${DB_NAME:-researchagent}
+      POSTGRES_USER: ${DB_USERNAME:-researchagent}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-researchagent}
 
     ports:
       - "${DB_PORT:-5432}:5432"
@@ -21,7 +21,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "pg_isready -U ${DB_USERNAME:-researchbuddy} -d ${DB_NAME:-researchbuddy}"
+          "pg_isready -U ${DB_USERNAME:-researchagent} -d ${DB_NAME:-researchagent}"
         ]
       interval: 5s
       timeout: 5s
@@ -29,7 +29,7 @@ services:
 
   redis:
     image: redis:7
-    container_name: research-buddy-redis
+    container_name: research-agent-redis
     restart: no
 
     ports:
@@ -46,7 +46,7 @@ services:
 
   weaviate:
     image: cr.weaviate.io/semitechnologies/weaviate:1.38.2
-    container_name: research-buddy-weaviate
+    container_name: research-agent-weaviate
     restart: no
 
     environment:
@@ -75,16 +75,16 @@ services:
     build:
       context: ./AIproject
 
-    container_name: research-buddy-api
+    container_name: research-agent-api
     restart: no
     init: true
 
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-researchbuddy}
-      DB_USERNAME: ${DB_USERNAME:-researchbuddy}
-      DB_PASSWORD: ${DB_PASSWORD:-researchbuddy}
+      DB_NAME: ${DB_NAME:-researchagent}
+      DB_USERNAME: ${DB_USERNAME:-researchagent}
+      DB_PASSWORD: ${DB_PASSWORD:-researchagent}
 
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -110,7 +110,7 @@ services:
     build:
       context: ./AIProject-Worker
 
-    container_name: research-buddy-worker
+    container_name: research-agent-worker
     restart: no
     init: true
 
@@ -135,6 +135,18 @@ services:
       WEAVIATE_URL: http://weaviate:8080
       WEAVIATE_GRPC_PORT: 50051
 
+      # Context window for the deployed model — must match LLM_MODEL.
+      # llama3-groq-8b-8192 → 8192   |  llama-3.3-70b-versatile → 128000
+      MAX_CONTEXT_TOKENS: ${MAX_CONTEXT_TOKENS:-8192}
+      RESERVED_OUTPUT_TOKENS: ${RESERVED_OUTPUT_TOKENS:-1024}
+
+      # How many LLM calls may be in-flight process-wide at once.
+      # Lower this if you see provider 429s; raise it for large-context APIs.
+      LLM_GLOBAL_CONCURRENCY: ${LLM_GLOBAL_CONCURRENCY:-5}
+
+      # How many research jobs may run concurrently in this worker process.
+      MAX_CONCURRENT_JOBS: ${MAX_CONCURRENT_JOBS:-3}
+
     depends_on:
       api:
         condition: service_started
@@ -147,7 +159,7 @@ services:
     build:
       context: ./frontend
 
-    container_name: research-buddy-frontend
+    container_name: research-agent-frontend
     restart: no
 
     ports:

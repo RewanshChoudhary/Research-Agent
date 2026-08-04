@@ -1,4 +1,4 @@
-// Minimal zero-dependency dev server for the ResearchBuddy frontend.
+// Minimal zero-dependency dev server for the Research-Agent frontend.
 // Serves static files from this directory and proxies /api/* to the Spring API.
 // Usage: node serve.js [port]
 

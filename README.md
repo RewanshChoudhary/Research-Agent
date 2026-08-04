@@ -1,10 +1,10 @@
-# ResearchBuddy
+# Research-Agent
 
 > Multi-agent AI-powered research assistant — submit a natural-language query and get a structured, cited report with fact-checking and analyst insights.
 
 ## What Is It?
 
-ResearchBuddy automates the end-to-end research workflow. Instead of manually searching, reading, and synthesizing information from dozens of web pages, you submit a question and it orchestrates a pipeline of AI agents to produce a comprehensive, sourced report.
+Research-Agent automates the end-to-end research workflow. Instead of manually searching, reading, and synthesizing information from dozens of web pages, you submit a question and it orchestrates a pipeline of AI agents to produce a comprehensive, sourced report.
 
 The system is built around a **Spring Boot API** that receives requests, persists state in **PostgreSQL**, and queues work via **Redis Streams**. A **Python async worker** consumes jobs, runs a configurable agent pipeline, and reports results back. A **Weaviate** vector database enables semantic search via **HYDE** (Hypothetical Document Embedding), and a dark-theme **vanilla frontend** lets you submit queries and track progress in real time.
 
@@ -248,7 +248,7 @@ Key environment variables (full list in `.env.example`):
 ## Project Structure
 
 ```
-ResearchBuddy/
+Research-Agent/
 ├── docker-compose.yml              # 6-service Docker Compose
 ├── .env.example                    # Template for all env vars
 ├── AGENTS.md                       # Agent context (for AI coding assistants)
@@ -258,7 +258,7 @@ ResearchBuddy/
 ├── AIproject/                      # === Spring Boot API ===
 │   ├── pom.xml                     # Maven build (Spring Boot 4.0.3, Java 25)
 │   ├── Dockerfile                  # Multi-stage: jdk → jre
-│   └── src/main/java/com/ResearchBuddy/AIproject/
+│   └── src/main/java/com/ResearchAgent/AIproject/
 │       ├── AIprojectApplication.java
 │       ├── auth/WorkerInterceptor.java         # X-Worker-Token validation
 │       ├── config/

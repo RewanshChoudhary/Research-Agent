@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# run-local.sh — Run ResearchBuddy WITHOUT rebuilding Docker images.
+# run-local.sh — Run Research-Agent WITHOUT rebuilding Docker images.
 #
 # Strategy:
 #   - Infra (postgres, redis, weaviate) runs via `docker compose up` using the
@@ -78,9 +78,9 @@ wait_for() {
 start_infra() {
   echo "==> Starting infra (postgres, redis, weaviate) via Docker prebuilt images..."
   "${INFRA_COMPOSE[@]}"
-  wait_for "postgres" "pg_isready -h localhost -p $DB_PORT -U ${DB_USERNAME:-researchbuddy} -d ${DB_NAME:-researchbuddy} 2>/dev/null || docker exec research-buddy-postgres pg_isready -U ${DB_USERNAME:-researchbuddy} >/dev/null 2>&1" 60 2 || \
-    wait_for "postgres(container)" "docker exec research-buddy-postgres pg_isready -U ${DB_USERNAME:-researchbuddy} >/dev/null 2>&1" 60 2
-  wait_for "redis" "redis-cli -h localhost -p $REDIS_PORT ping 2>/dev/null | grep -q PONG || docker exec research-buddy-redis redis-cli ping 2>/dev/null | grep -q PONG" 30 2
+  wait_for "postgres" "pg_isready -h localhost -p $DB_PORT -U ${DB_USERNAME:-researchagent} -d ${DB_NAME:-researchagent} 2>/dev/null || docker exec research-agent-postgres pg_isready -U ${DB_USERNAME:-researchagent} >/dev/null 2>&1" 60 2 || \
+    wait_for "postgres(container)" "docker exec research-agent-postgres pg_isready -U ${DB_USERNAME:-researchagent} >/dev/null 2>&1" 60 2
+  wait_for "redis" "redis-cli -h localhost -p $REDIS_PORT ping 2>/dev/null | grep -q PONG || docker exec research-agent-redis redis-cli ping 2>/dev/null | grep -q PONG" 30 2
   wait_for "weaviate" "curl -fsS http://localhost:$WEAVIATE_HTTP_PORT/v1/.well-known/ready >/dev/null 2>&1" 40 3
 }
 
@@ -89,7 +89,7 @@ start_api() {
   (
     cd "$ROOT/AIproject"
     DB_HOST=localhost DB_PORT="$DB_PORT" \
-    DB_NAME="${DB_NAME:-researchbuddy}" DB_USERNAME="${DB_USERNAME:-researchbuddy}" DB_PASSWORD="${DB_PASSWORD:-researchbuddy}" \
+    DB_NAME="${DB_NAME:-researchagent}" DB_USERNAME="${DB_USERNAME:-researchagent}" DB_PASSWORD="${DB_PASSWORD:-researchagent}" \
     REDIS_HOST=localhost REDIS_PORT="$REDIS_PORT" \
     REDIS_JOB_STREAM="${REDIS_JOB_STREAM:-research:jobs:stream}" \
     REDIS_JOB_GROUP="${REDIS_JOB_GROUP:-research:workers}" \
@@ -160,7 +160,7 @@ start_frontend
 
 echo
 echo "============================================================"
-echo " ResearchBuddy is running (locally, no image rebuild):"
+echo " Research-Agent is running (locally, no image rebuild):"
 echo "   Frontend : http://localhost:$FRONTEND_PORT"
 echo "   API      : http://localhost:$API_PORT"
 echo "   Worker   : local (uv)"

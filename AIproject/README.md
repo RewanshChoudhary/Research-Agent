@@ -218,7 +218,7 @@ FAILED
 ## Project Structure
 
 ```
-src/main/java/com/ResearchBuddy/AIproject/
+src/main/java/com/ResearchAgent/AIproject/
 ├── AIprojectApplication.java
 ├── auth/              # Worker token interceptor
 ├── config/            # WebMVC, Redis streams
