@@ -7,6 +7,8 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
+import com.ResearchAgent.AIproject.persistence.entity.enums.ResearchDepth;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -31,9 +33,14 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import tools.jackson.databind.ObjectMapper;
 
+import static com.ResearchAgent.AIproject.persistence.entity.enums.ResearchDepth.DEEP;
+import static com.ResearchAgent.AIproject.persistence.entity.enums.ResearchDepth.QUICK;
+
 @Service
 @RequiredArgsConstructor
 public class ResearchRequestService {
+
+  private final Environment environment;
   private final ParsingUtils parsingUtils;
 
   private final RedisJobPublisherService publisher;
@@ -44,13 +51,27 @@ public class ResearchRequestService {
   private final LocalUserService localUserService;
   private final ObjectMapper objectMapper;
 
+  private int getMaxSourcesFromDepth(ResearchDepth depth) {
+    int quick = Integer.parseInt(
+        environment.getProperty("MAX_SOURCES_QUICK", "15"));
+    int standard = Integer.parseInt(
+        environment.getProperty("MAX_SOURCES_STANDARD", "17"));
+    int deep = Integer.parseInt(
+        environment.getProperty("MAX_SOURCES_DEEP", "25"));
+    return switch (depth) {
+      case QUICK -> quick;
+      case STANDARD -> standard;
+      case DEEP -> deep;
+    };
+  }
+
   @Transactional
   public ResearchJobAcceptedResponse createRequest(ResearchRequest request) {
     UserEntity user = localUserService.getOrCreateLocalUser();
     ResearchJobEntity job = ResearchJobEntity.builder().user(user)
         .status(JobStatus.PENDING)
         .depth(request.getDepth())
-        .maxSources(request.getMaxSources())
+        .maxSources(request.getMaxSources() != null ? request.getMaxSources() : getMaxSourcesFromDepth(request.getDepth()))
         .domain(request.getDomain())
         .factCheckEnabled(Boolean.TRUE.equals(request.getFactCheck()))
         .query(request.getQuery())

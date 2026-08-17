@@ -36,7 +36,6 @@ REDIS_STREAM = (
     or os.getenv("REDIS_STREAM_NAME")
     or "research:jobs:stream"
 )
-# Maximum number of jobs running concurrently in this worker process.
 MAX_CONCURRENT_JOBS = int(os.getenv("MAX_CONCURRENT_JOBS", "3"))
 
 

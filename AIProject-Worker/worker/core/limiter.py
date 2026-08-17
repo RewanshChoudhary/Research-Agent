@@ -25,7 +25,6 @@ log = structlog.get_logger()
 
 _global_llm_sem: asyncio.Semaphore | None = None
 
-# Ring-buffer of request timestamps for sliding-window RPM tracking.
 _request_times: collections.deque[float] = collections.deque()
 _rpm_lock: asyncio.Lock | None = None
 

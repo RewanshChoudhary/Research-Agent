@@ -24,8 +24,6 @@ log = structlog.get_logger()
 
 ENCODING_NAME = os.getenv("TOKENIZER_ENCODING", "cl100k_base")
 
-# Default to a conservative 8 192 tokens to match the Groq default model.
-# Override via MAX_CONTEXT_TOKENS= in .env for large-context models.
 MAX_CONTEXT_TOKENS = int(os.getenv("MAX_CONTEXT_TOKENS", "8192"))
 RESERVED_OUTPUT_TOKENS = int(os.getenv("RESERVED_OUTPUT_TOKENS", "1024"))
 CHUNK_OVERLAP_TOKENS = int(os.getenv("CHUNK_PROMPT_OVERLAP", "100"))

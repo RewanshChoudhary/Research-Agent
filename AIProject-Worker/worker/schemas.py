@@ -42,7 +42,7 @@ class ResearchRequest(BaseModel):
 
 
 
-# Worker → Java request/response DTOs
+
 
 
 class WorkerJobDetailsResponse(BaseModel):

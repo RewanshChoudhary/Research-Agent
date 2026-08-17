@@ -32,7 +32,6 @@ log = structlog.get_logger()
 JAVA_SERVER_URL = os.getenv("JAVA_SERVER_URL")
 WORKER_TOKEN = os.getenv("WORKER_TOKEN", "dev-worker-secret")
 
-# Shared persistent client — created once, reused for all callbacks.
 _shared_client: httpx.AsyncClient | None = None
 
 

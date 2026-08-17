@@ -15,8 +15,6 @@ log = structlog.get_logger()
 CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "800"))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "100"))
 
-# Maximum sources scrapped per depth level.
-# These caps prevent over-spending token budget on free-tier APIs.
 DEPTH_SOURCE_CAPS = {
     Depth.QUICK: int(os.getenv("MAX_SOURCES_QUICK", "3")),
     Depth.STANDARD: int(os.getenv("MAX_SOURCES_STANDARD", "5")),

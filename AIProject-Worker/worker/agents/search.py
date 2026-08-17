@@ -159,7 +159,6 @@ async def _safe_hyde(ctx: ResearchContext) -> list[dict[str, str]]:
         return []
 
 
-# Uses decomposition method to capture query intent
 async def _query_phrases(query: str, config: dict, llm: callable) -> list[str]:
     try:
         decompose_prompt = template.format(query=query)

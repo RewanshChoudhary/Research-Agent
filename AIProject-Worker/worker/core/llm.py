@@ -12,13 +12,34 @@ from worker.core.prompt_chunker import count_tokens, chunk_content, fits_in_cont
 dotenv.load_dotenv()
 log = structlog.get_logger()
 
-BASE_URL = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
-API_KEY = os.getenv("LLM_API_KEY") or os.getenv("GROQ_API_KEY")
-DEFAULT_MODEL = os.getenv("LLM_MODEL", "llama3-groq-8b-8192-tool-use-preview")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
+
+if LLM_PROVIDER == "groq":
+    BASE_URL = "https://api.groq.com/openai/v1"
+    API_KEY = os.getenv("GROQ_API_KEY")
+    DEFAULT_MODEL = os.getenv("LLM_MODEL", "llama3-groq-8b-8192-tool-use-preview")
+elif LLM_PROVIDER == "nvidia":
+    BASE_URL = os.getenv("LLM_BASE_URL", "http://host.docker.internal:11434/v1")
+    API_KEY = os.getenv("LLM_API_KEY") or os.getenv("WORKER_TOKEN", "default-key")
+    DEFAULT_MODEL = os.getenv("LLM_MODEL", "llama3.1-nemotron-70b-instruct")
+elif LLM_PROVIDER == "gemini":
+    BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
+    API_KEY = os.getenv("GEMINI_API_KEY")
+    DEFAULT_MODEL = os.getenv("LLM_MODEL", "gemini-1.5-flash")
+else:
+    BASE_URL = "https://api.groq.com/openai/v1"
+    API_KEY = os.getenv("GROQ_API_KEY")
+    DEFAULT_MODEL = os.getenv("LLM_MODEL", "llama3-groq-8b-8192-tool-use-preview")
+    log.warning("llm_unknown_provider", provider=LLM_PROVIDER)
+
 LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "60.0"))
 
 if not API_KEY:
-    log.warning("llm_api_key_missing", expected="GROQ_API_KEY or LLM_API_KEY")
+    key_map = {"groq": "GROQ_API_KEY", "nvidia": "LLM_API_KEY", "gemini": "GEMINI_API_KEY"}
+    log.warning(
+        "llm_api_key_missing",
+        expected=key_map.get(LLM_PROVIDER, "GROQ_API_KEY or LLM_API_KEY or GEMINI_API_KEY"),
+    )
 
 client = AsyncOpenAI(
     api_key=API_KEY or "missing-key",
